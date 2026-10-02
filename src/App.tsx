@@ -5,12 +5,12 @@ import { hatsStepsInfo, ladderStepsInfo } from './data/ritualSteps';
 import { academyHats } from './data/academyHats';
 import {
   getInteractiveMetrics,
-  isHatsVerdeStrong(hatsData),
-  isHatsAzulStrong(hatsData),
-  isHatsNegroHeavier(hatsData),
-  isLadderEjecucionStrong(ladderData),
-  isLadderInmunidadStrong(ladderData),
-  isLadderPassive(ladderData),
+  isHatsVerdeStrong,
+  isHatsAzulStrong,
+  isHatsNegroHeavier,
+  isLadderEjecucionStrong,
+  isLadderInmunidadStrong,
+  isLadderPassive,
   getHatsVerdeFeedback,
   getHatsAzulFeedback,
   getHatsCoherenceFeedback,
