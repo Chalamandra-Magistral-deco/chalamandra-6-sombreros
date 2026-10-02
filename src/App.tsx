@@ -1,4 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
+import type { HatsData, LadderData } from './types/ritual';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Sparkles, 
@@ -84,28 +85,6 @@ const BLACK_HAT_IMAGE = '/src/assets/images/black_hat_icon_1784029215508.jpg';
 const YELLOW_HAT_IMAGE = '/src/assets/images/yellow_hat_icon_1784029226659.jpg';
 const GREEN_HAT_IMAGE = '/src/assets/images/green_hat_icon_1784029237771.jpg';
 const BLUE_HAT_IMAGE = '/src/assets/images/blue_hat_icon_1784029248993.jpg';
-
-// Types for Hats Ritual
-interface HatsData {
-  azotea: string;
-  blanco: string;
-  rojo: string;
-  negro: string;
-  amarillo: string;
-  verde: string;
-  azul: string;
-}
-
-// Types for Strategic Ladder Ritual
-interface LadderData {
-  instinto: string;
-  emocion: string;
-  jugada: string;
-  posicion: string;
-  ejecucion: string;
-  bitacora: string;
-  inmunidad: string;
-}
 
 const INITIAL_HATS_DATA: HatsData = {
   azotea: '',
