@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Sparkles, 
@@ -61,10 +61,18 @@ import {
   SavedHatsRitual,
   SavedLadderRitual
 } from './lib/firestoreService';
-import { CognitiveTrainerTab } from './components/CognitiveTrainerTab';
-import { HatsEvolutionChart } from './components/HatsEvolutionChart';
-import { AICoherenceScanner } from './components/AICoherenceScanner';
-import { GeminiHatChatbot } from './components/GeminiHatChatbot';
+const CognitiveTrainerTab = lazy(() =>
+  import('./components/CognitiveTrainerTab').then(m => ({ default: m.CognitiveTrainerTab }))
+);
+const HatsEvolutionChart = lazy(() =>
+  import('./components/HatsEvolutionChart').then(m => ({ default: m.HatsEvolutionChart }))
+);
+const AICoherenceScanner = lazy(() =>
+  import('./components/AICoherenceScanner').then(m => ({ default: m.AICoherenceScanner }))
+);
+const GeminiHatChatbot = lazy(() =>
+  import('./components/GeminiHatChatbot').then(m => ({ default: m.GeminiHatChatbot }))
+);
 
 const heroImage = '/src/assets/images/seven_hats_wheel_1790335175529.jpg';
 const chalamandraAvatar = '/src/assets/images/chalamandra_avatar_1790335163182.jpg';
@@ -1479,9 +1487,13 @@ export default function App() {
         )}
 
         {activeTab === 'trainer' ? (
-          <CognitiveTrainerTab />
+          <Suspense fallback={<div className="p-8 text-center text-slate-400 text-sm">Cargando entrenador...</div>}>
+            <CognitiveTrainerTab />
+          </Suspense>
         ) : activeTab === 'chat' ? (
-          <GeminiHatChatbot />
+          <Suspense fallback={<div className="p-8 text-center text-slate-400 text-sm">Cargando chat...</div>}>
+            <GeminiHatChatbot />
+          </Suspense>
         ) : (
           /* Content Body with customized glowing border frame */
           <div 
@@ -1826,7 +1838,9 @@ export default function App() {
 
                 {/* Comparative AI Coherence Scanner (Gemini) */}
                 {activeTab === 'hats' && (
-                  <AICoherenceScanner hatsData={hatsData} />
+                  <Suspense fallback={<div className="p-4 text-center text-slate-400 text-xs">Cargando escáner...</div>}>
+                    <AICoherenceScanner hatsData={hatsData} />
+                  </Suspense>
                 )}
 
                 {/* Dashboard layout of decisions / elements */}
@@ -2000,10 +2014,12 @@ export default function App() {
                   {/* Historical Evolution Chart with Recharts */}
                   {activeTab === 'hats' && (
                     <div className="pt-1">
-                      <HatsEvolutionChart 
-                        savedRituals={savedHatsRituals}
-                        currentHatsData={hatsData}
-                      />
+                      <Suspense fallback={<div className="p-4 text-center text-slate-400 text-xs">Cargando gráfica...</div>}>
+                        <HatsEvolutionChart 
+                          savedRituals={savedHatsRituals}
+                          currentHatsData={hatsData}
+                        />
+                      </Suspense>
                     </div>
                   )}
 
@@ -2636,10 +2652,12 @@ export default function App() {
               <span className="hidden sm:inline">Mentor 6 Sombreros (Gemini)</span>
             </button>
           ) : (
-            <GeminiHatChatbot
-              isFloating={true}
-              onClose={() => setShowFloatingChat(false)}
-            />
+            <Suspense fallback={<div className="p-4 text-center text-slate-400 text-xs">Cargando mentor...</div>}>
+              <GeminiHatChatbot
+                isFloating={true}
+                onClose={() => setShowFloatingChat(false)}
+              />
+            </Suspense>
           )}
         </div>
       )}
