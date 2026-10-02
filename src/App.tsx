@@ -3,6 +3,21 @@ import type { HatsData, LadderData } from './types/ritual';
 import { INITIAL_HATS_DATA, INITIAL_LADDER_DATA } from './data/ritualInitial';
 import { hatsStepsInfo, ladderStepsInfo } from './data/ritualSteps';
 import { academyHats } from './data/academyHats';
+import {
+  getInteractiveMetrics,
+  isHatsVerdeStrong(hatsData),
+  isHatsAzulStrong(hatsData),
+  isHatsNegroHeavier(hatsData),
+  isLadderEjecucionStrong(ladderData),
+  isLadderInmunidadStrong(ladderData),
+  isLadderPassive(ladderData),
+  getHatsVerdeFeedback,
+  getHatsAzulFeedback,
+  getHatsCoherenceFeedback,
+  getLadderEjecucionFeedback,
+  getLadderInmunidadFeedback,
+  getLadderCoherenceFeedback,
+} from './lib/ritualMetrics';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Sparkles, 
@@ -495,102 +510,22 @@ export default function App() {
   };
 
   // Real-time calculated indicators
-  const getInteractiveMetrics = () => {
-    if (activeTab === 'hats') {
-      const o = Math.min(100, Math.round((hatsData.blanco.trim().length / 120) * 100));
-      const e = Math.min(100, Math.round((hatsData.rojo.trim().length / 100) * 100));
-      const r = Math.min(100, Math.round((hatsData.negro.trim().length / 100) * 100));
-      const g = Math.min(100, Math.round((hatsData.amarillo.trim().length / 100) * 100));
-      const c = Math.min(100, Math.round((hatsData.verde.trim().length / 120) * 100));
-      const a = Math.min(100, Math.round((hatsData.azul.trim().length / 80) * 100));
-      return { blanco: o, rojo: e, negro: r, amarillo: g, verde: c, azul: a };
-    } else {
-      const i = Math.min(100, Math.round((ladderData.instinto.trim().length / 80) * 100));
-      const em = Math.min(100, Math.round((ladderData.emocion.trim().length / 80) * 100));
-      const ju = Math.min(100, Math.round((ladderData.jugada.trim().length / 50) * 100));
-      const po = Math.min(100, Math.round((ladderData.posicion.trim().length / 80) * 100));
-      const ej = Math.min(100, Math.round((ladderData.ejecucion.trim().length / 100) * 100));
-      const bi = Math.min(100, Math.round((ladderData.bitacora.trim().length / 80) * 100));
-      const inm = Math.min(100, Math.round((ladderData.inmunidad.trim().length / 60) * 100));
-      return { instinto: i, emocion: em, jugada: ju, posicion: po, ejecucion: ej, bitacora: bi, inmunidad: inm };
-    }
-  };
 
-  const metrics = getInteractiveMetrics();
 
   // Coherence Diagnostics calculations for Hats Mode
-  const hatsVerdeLen = hatsData.verde.trim().length;
-  const hatsAzulLen = hatsData.azul.trim().length;
-  const hatsNegroLen = hatsData.negro.trim().length;
-  const hatsAmarilloLen = hatsData.amarillo.trim().length;
+  const metrics = getInteractiveMetrics(activeTab, hatsData, ladderData);
 
-  const isHatsVerdeStrong = hatsVerdeLen >= 10;
-  const isHatsAzulStrong = hatsAzulLen >= 15;
-  const isHatsNegroHeavier = hatsNegroLen > hatsAmarilloLen;
-
-  const getHatsVerdeFeedback = () => {
-    return isHatsVerdeStrong
-      ? '✓ Módulo creativo activo. Tu mente ha generado alternativas viables fuera del marco común.'
-      : '⚠️ MÓDULO CREATIVO DÉBIL: Tu sombrero verde está vacío. Arriésgate a proponer soluciones más alocadas o bizarras.';
-  };
-
-  const getHatsAzulFeedback = () => {
-    return isHatsAzulStrong
-      ? '✓ Comando ejecutivo robusto. El paso 7 es concreto, medible e irreversible.'
-      : '⚠️ PARÁLISIS OPERATIVA: El comando de acción azul es demasiado abstracto o tímido. Necesita un gatillo que duela o libere esta semana.';
-  };
-
-  const getHatsCoherenceFeedback = () => {
-    if (isHatsNegroHeavier) {
-      return '⚠️ HEGEMONÍA DEL TEMOR (Negro > Amarillo): Las advertencias y el miedo eclipsan las oportunidades. Riesgo de inacción.';
-    } else if (hatsNegroLen === 0 && hatsAmarilloLen === 0) {
-      return '• Balanza de viabilidad pendiente: Completa riesgos (Negro) y oportunidades (Amarillo).';
-    } else {
-      return '✓ BALANCE DE PODER POSITIVO: Tus oportunidades superan tus miedos estratégicos. El camino está desbloqueado.';
-    }
-  };
-
-  // Coherence Diagnostics calculations for Ladder Mode
-  const ladderEjecucionLen = ladderData.ejecucion.trim().length;
-  const ladderInmunidadLen = ladderData.inmunidad.trim().length;
-  const isLadderEjecucionStrong = ladderEjecucionLen >= 15;
-  const isLadderInmunidadStrong = ladderInmunidadLen >= 15;
-  const isLadderPassive = ladderData.posicion.toLowerCase().includes('víctima') || ladderData.posicion.toLowerCase().includes('sumiso') || ladderData.posicion.toLowerCase().includes('niño') || ladderData.posicion.toLowerCase().includes('justific');
-
-  const getLadderEjecucionFeedback = () => {
-    return isLadderEjecucionStrong
-      ? '✓ Contraataque táctico maduro. Planteas un desarme sin enojo ni sumisión.'
-      : '⚠️ RESPUESTA REACCIONARIA: Tu ejecución táctica es demasiado corta. Riesgo de estallar en ira o dar explicaciones inútiles.';
-  };
-
-  const getLadderInmunidadFeedback = () => {
-    return isLadderInmunidadStrong
-      ? '✓ Blindaje de nivel 7 robusto. Tu creencia erradica la vulnerabilidad visceral.'
-      : '⚠️ VULNERABILIDAD PERSISTENTE: No has blindado tu sistema operativo mental. El dardo volverá a dañarte.';
-  };
-
-  const getLadderCoherenceFeedback = () => {
-    if (isLadderPassive) {
-      return '⚠️ DETECTADO ANCLAJE SUMISO: Estás aceptando el marco o rol de víctima del manipulador. Debes quebrar el rol.';
-    } else if (ladderData.posicion.trim().length === 0) {
-      return '• Pendiente evaluar el tablero relacional y máscaras de control.';
-    } else {
-      return '✓ POSICIONAMIENTO DE SOBERANÍA: Mantienes el marco emocional firme frente a la agresión externa.';
-    }
-  };
-
-  // Text builders
   const getRawTextManifesto = () => {
     if (activeTab === 'hats') {
-      const greenStatus = isHatsVerdeStrong 
+      const greenStatus = isHatsVerdeStrong(hatsData) 
         ? '✓ Módulo creativo activo. Salidas no convencionales listas.' 
         : '⚠️ ADVERTENCIA: Módulo creativo vacío o demasiado pasivo.';
         
-      const blueStatus = isHatsAzulStrong 
+      const blueStatus = isHatsAzulStrong(hatsData) 
         ? '✓ Comando de ejecución listo para correr.' 
         : '⚠️ PARÁLISIS: Comando azul demasiado débil.';
 
-      const balanceStatus = isHatsNegroHeavier
+      const balanceStatus = isHatsNegroHeavier(hatsData)
         ? '⚠️ RIESGO: El Negro pesa más que el Amarillo. Inacción probable.'
         : '✓ VIABILIDAD: Las oportunidades compensan o superan los temores evaluados.';
 
@@ -620,15 +555,15 @@ export default function App() {
 ║ #RitualChalamandra #EdwardDeBonoPro
 ╚═══════════════════════════════════════════════════════════╝`;
     } else {
-      const execStatus = isLadderEjecucionStrong 
+      const execStatus = isLadderEjecucionStrong(ladderData) 
         ? '✓ Desarme y cambio de eje táctico estructurado.' 
         : '⚠️ RESPUESTA DEBIL: Parche inmaduro ante la agresión.';
         
-      const immunityStatus = isLadderInmunidadStrong 
+      const immunityStatus = isLadderInmunidadStrong(ladderData) 
         ? '✓ Blindaje de nivel 7 robustecido.' 
         : '⚠️ VULNERABILIDAD: Código de inmunidad incompleto.';
 
-      const frameworkStatus = isLadderPassive
+      const frameworkStatus = isLadderPassive(ladderData)
         ? '⚠️ RIESGO: Detectado rol asimétrico de sumisión frente al agresor.'
         : '✓ SOBERANÍA: Rechazas el marco asimétrico con compostura superior.';
 
@@ -1469,32 +1404,32 @@ export default function App() {
                   
                   {activeTab === 'hats' ? (
                     <div className="space-y-2.5 text-sm">
-                      <div className={`p-3 rounded-xl flex items-center gap-2.5 border ${isHatsVerdeStrong ? 'bg-emerald-500/5 text-emerald-400 border-emerald-500/15' : 'bg-amber-500/5 text-amber-400 border-amber-500/15'}`}>
+                      <div className={`p-3 rounded-xl flex items-center gap-2.5 border ${isHatsVerdeStrong(hatsData) ? 'bg-emerald-500/5 text-emerald-400 border-emerald-500/15' : 'bg-amber-500/5 text-amber-400 border-amber-500/15'}`}>
                         <div className="w-2 h-2 rounded-full bg-current shrink-0" />
-                        <p className="font-medium">{getHatsVerdeFeedback()}</p>
+                        <p className="font-medium">{getHatsVerdeFeedback(hatsData)}</p>
                       </div>
-                      <div className={`p-3 rounded-xl flex items-center gap-2.5 border ${isHatsAzulStrong ? 'bg-emerald-500/5 text-emerald-400 border-emerald-500/15' : 'bg-rose-500/5 text-rose-400 border-rose-500/15'}`}>
+                      <div className={`p-3 rounded-xl flex items-center gap-2.5 border ${isHatsAzulStrong(hatsData) ? 'bg-emerald-500/5 text-emerald-400 border-emerald-500/15' : 'bg-rose-500/5 text-rose-400 border-rose-500/15'}`}>
                         <div className="w-2 h-2 rounded-full bg-current shrink-0" />
-                        <p className="font-medium">{getHatsAzulFeedback()}</p>
+                        <p className="font-medium">{getHatsAzulFeedback(hatsData)}</p>
                       </div>
-                      <div className={`p-3 rounded-xl flex items-center gap-2.5 border ${!isHatsNegroHeavier ? 'bg-emerald-500/5 text-emerald-400 border-emerald-500/15' : 'bg-rose-500/5 text-rose-400 border-rose-500/15'}`}>
+                      <div className={`p-3 rounded-xl flex items-center gap-2.5 border ${!isHatsNegroHeavier(hatsData) ? 'bg-emerald-500/5 text-emerald-400 border-emerald-500/15' : 'bg-rose-500/5 text-rose-400 border-rose-500/15'}`}>
                         <div className="w-2 h-2 rounded-full bg-current shrink-0" />
-                        <p className="font-medium">{getHatsCoherenceFeedback()}</p>
+                        <p className="font-medium">{getHatsCoherenceFeedback(hatsData)}</p>
                       </div>
                     </div>
                   ) : (
                     <div className="space-y-2.5 text-sm">
-                      <div className={`p-3 rounded-xl flex items-center gap-2.5 border ${isLadderEjecucionStrong ? 'bg-emerald-500/5 text-emerald-400 border-emerald-500/15' : 'bg-amber-500/5 text-amber-400 border-amber-500/15'}`}>
+                      <div className={`p-3 rounded-xl flex items-center gap-2.5 border ${isLadderEjecucionStrong(ladderData) ? 'bg-emerald-500/5 text-emerald-400 border-emerald-500/15' : 'bg-amber-500/5 text-amber-400 border-amber-500/15'}`}>
                         <div className="w-2 h-2 rounded-full bg-current shrink-0" />
-                        <p className="font-medium">{getLadderEjecucionFeedback()}</p>
+                        <p className="font-medium">{getLadderEjecucionFeedback(ladderData)}</p>
                       </div>
-                      <div className={`p-3 rounded-xl flex items-center gap-2.5 border ${isLadderInmunidadStrong ? 'bg-emerald-500/5 text-emerald-400 border-emerald-500/15' : 'bg-rose-500/5 text-rose-400 border-rose-500/15'}`}>
+                      <div className={`p-3 rounded-xl flex items-center gap-2.5 border ${isLadderInmunidadStrong(ladderData) ? 'bg-emerald-500/5 text-emerald-400 border-emerald-500/15' : 'bg-rose-500/5 text-rose-400 border-rose-500/15'}`}>
                         <div className="w-2 h-2 rounded-full bg-current shrink-0" />
-                        <p className="font-medium">{getLadderInmunidadFeedback()}</p>
+                        <p className="font-medium">{getLadderInmunidadFeedback(ladderData)}</p>
                       </div>
-                      <div className={`p-3 rounded-xl flex items-center gap-2.5 border ${!isLadderPassive ? 'bg-emerald-500/5 text-emerald-400 border-emerald-500/15' : 'bg-rose-500/5 text-rose-400 border-rose-500/15'}`}>
+                      <div className={`p-3 rounded-xl flex items-center gap-2.5 border ${!isLadderPassive(ladderData) ? 'bg-emerald-500/5 text-emerald-400 border-emerald-500/15' : 'bg-rose-500/5 text-rose-400 border-rose-500/15'}`}>
                         <div className="w-2 h-2 rounded-full bg-current shrink-0" />
-                        <p className="font-medium">{getLadderCoherenceFeedback()}</p>
+                        <p className="font-medium">{getLadderCoherenceFeedback(ladderData)}</p>
                       </div>
                     </div>
                   )}
