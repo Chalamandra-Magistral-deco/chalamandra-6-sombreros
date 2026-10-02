@@ -1,5 +1,6 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import type { HatsData, LadderData } from './types/ritual';
+import { INITIAL_HATS_DATA, INITIAL_LADDER_DATA } from './data/ritualInitial';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Sparkles, 
@@ -86,25 +87,6 @@ const YELLOW_HAT_IMAGE = '/src/assets/images/yellow_hat_icon_1784029226659.jpg';
 const GREEN_HAT_IMAGE = '/src/assets/images/green_hat_icon_1784029237771.jpg';
 const BLUE_HAT_IMAGE = '/src/assets/images/blue_hat_icon_1784029248993.jpg';
 
-const INITIAL_HATS_DATA: HatsData = {
-  azotea: '',
-  blanco: '',
-  rojo: '',
-  negro: '',
-  amarillo: '',
-  verde: '',
-  azul: ''
-};
-
-const INITIAL_LADDER_DATA: LadderData = {
-  instinto: '',
-  emocion: '',
-  jugada: '',
-  posicion: '',
-  ejecucion: '',
-  bitacora: '',
-  inmunidad: ''
-};
 
 
 
