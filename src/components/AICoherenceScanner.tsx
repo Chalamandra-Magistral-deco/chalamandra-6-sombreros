@@ -3,13 +3,9 @@ import {
   Sparkles, 
   RefreshCw, 
   AlertCircle, 
-  CheckCircle2, 
   Scale, 
   EyeOff, 
-  Compass, 
-  ShieldCheck,
-  Zap,
-  ArrowRight
+  Zap
 } from 'lucide-react';
 import { HatsData } from './HatsEvolutionChart';
 

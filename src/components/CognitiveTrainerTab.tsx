@@ -21,20 +21,15 @@ import { sound } from '../lib/audio';
 import { 
   Brain, 
   Sparkles, 
-  Flame, 
   Timer, 
-  AlertCircle, 
   Send, 
   RotateCw, 
-  CheckCircle2, 
   HelpCircle, 
-  ShieldAlert,
-  Compass,
-  FileText,
-  Heart,
-  AlertTriangle,
-  Lightbulb,
-  Zap
+  Compass, 
+  FileText, 
+  Heart, 
+  AlertTriangle, 
+  Lightbulb
 } from 'lucide-react';
 
 export const CognitiveTrainerTab = () => {

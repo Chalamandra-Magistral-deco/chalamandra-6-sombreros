@@ -8,10 +8,8 @@ import {
   Check, 
   Brain, 
   Sparkles, 
-  AlertTriangle, 
   Compass, 
   RotateCcw,
-  ShieldAlert,
   Award
 } from 'lucide-react';
 

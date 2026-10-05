@@ -14,7 +14,7 @@ Sistema interactivo de toma de decisiones y entrenamiento cognitivo basado en el
 - **Ruleta Cognitiva Adaptativa**: Calibra tus sesgos mentales en tiempo real.
 - **Tutor Interactivo Gemini 3.5**: Modal flotante y pestaña con diálogos multi-turn adaptados a la personalidad de Chalamandra.
 - **Visualizador de Coherencia IA**: Analiza y mapea el equilibrio entre sombreros.
-- **Persistencia en Firestore**: Guarda tus rituales y progreso.
+- **Persistencia Local Autónoma**: Guarda, recupera y elimina tus rituales en tu navegador con total privacidad y sin requerir cuentas externas ni servicios de terceros.
 
 ## 🛠️ Desarrollo Local
 
@@ -23,4 +23,11 @@ npm install
 npm run dev
 ```
 
-Desarrollado con React, Vite, TypeScript, Tailwind CSS, Firebase Firestore y Google Gemini API.
+## 📦 Compilación y Producción
+
+```bash
+npm run build
+npm start
+```
+
+Desarrollado con React, Vite, TypeScript, Tailwind CSS, Web Audio API y Google Gemini API (`@google/genai`).

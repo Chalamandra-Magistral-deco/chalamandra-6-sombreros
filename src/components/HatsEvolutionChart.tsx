@@ -9,8 +9,8 @@ import {
   Legend,
   CartesianGrid
 } from 'recharts';
-import { BarChart3, Info, Sparkles, TrendingUp, History } from 'lucide-react';
-import { SavedHatsRitual } from '../lib/firestoreService';
+import { BarChart3, Info, TrendingUp, History } from 'lucide-react';
+import { SavedHatsRitual } from '../lib/storageService';
 
 export interface HatsData {
   azotea: string;

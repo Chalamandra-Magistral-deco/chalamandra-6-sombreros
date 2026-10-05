@@ -1,23 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
-import type { HatsData, LadderData } from './types/ritual';
-import { INITIAL_HATS_DATA, INITIAL_LADDER_DATA } from './data/ritualInitial';
-import { hatsStepsInfo, ladderStepsInfo } from './data/ritualSteps';
-import { academyHats } from './data/academyHats';
-import {
-  getInteractiveMetrics,
-  isHatsVerdeStrong,
-  isHatsAzulStrong,
-  isHatsNegroHeavier,
-  isLadderEjecucionStrong,
-  isLadderInmunidadStrong,
-  isLadderPassive,
-  getHatsVerdeFeedback,
-  getHatsAzulFeedback,
-  getHatsCoherenceFeedback,
-  getLadderEjecucionFeedback,
-  getLadderInmunidadFeedback,
-  getLadderCoherenceFeedback,
-} from './lib/ritualMetrics';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Sparkles, 
@@ -45,31 +26,22 @@ import {
   Compass,
   BookOpen,
   Sliders,
-  TrendingUp,
   Brain,
   Award,
-  Cloud,
-  CloudUpload,
-  LogOut,
-  LogIn,
-  UserCheck,
   Trash2,
   Clock,
   Database,
   Volume2,
   VolumeX,
-  Maximize2,
   Minimize2,
   Palette,
-  Flame,
-  Activity,
   Globe,
-  MessageSquare,
-  Bot
+  Bot,
+  ShieldCheck,
+  BookmarkCheck
 } from 'lucide-react';
-import { useAuth } from './context/AuthContext';
 import { sound } from './lib/audio';
-import { FLAVOR_THEMES } from './data/constants';
+import { FLAVOR_THEMES, HATS_STEPS, LADDER_STEPS, ACADEMY_HATS } from './data/constants';
 import { 
   saveHatsRitual, 
   subscribeHatsRituals, 
@@ -79,26 +51,64 @@ import {
   deleteLadderRitual,
   SavedHatsRitual,
   SavedLadderRitual
-} from './lib/firestoreService';
-import { ThermometerBar } from './components/ThermometerBar';
-
-const CognitiveTrainerTab = lazy(() =>
-  import('./components/CognitiveTrainerTab').then(m => ({ default: m.CognitiveTrainerTab }))
-);
-const HatsEvolutionChart = lazy(() =>
-  import('./components/HatsEvolutionChart').then(m => ({ default: m.HatsEvolutionChart }))
-);
-const AICoherenceScanner = lazy(() =>
-  import('./components/AICoherenceScanner').then(m => ({ default: m.AICoherenceScanner }))
-);
-const GeminiHatChatbot = lazy(() =>
-  import('./components/GeminiHatChatbot').then(m => ({ default: m.GeminiHatChatbot }))
-);
+} from './lib/storageService';
+import { CognitiveTrainerTab } from './components/CognitiveTrainerTab';
+import { HatsEvolutionChart } from './components/HatsEvolutionChart';
+import { AICoherenceScanner } from './components/AICoherenceScanner';
+import { GeminiHatChatbot } from './components/GeminiHatChatbot';
 
 const heroImage = '/src/assets/images/seven_hats_wheel_1790335175529.jpg';
 const chalamandraAvatar = '/src/assets/images/chalamandra_avatar_1790335163182.jpg';
 
+// Custom-generated icons for each of the 6 thinking hats (White, Red, Black, Yellow, Green, Blue)
+const WHITE_HAT_IMAGE = '/src/assets/images/white_hat_icon_1784029192992.jpg';
+const RED_HAT_IMAGE = '/src/assets/images/red_hat_icon_1784029203966.jpg';
+const BLACK_HAT_IMAGE = '/src/assets/images/black_hat_icon_1784029215508.jpg';
+const YELLOW_HAT_IMAGE = '/src/assets/images/yellow_hat_icon_1784029226659.jpg';
+const GREEN_HAT_IMAGE = '/src/assets/images/green_hat_icon_1784029237771.jpg';
+const BLUE_HAT_IMAGE = '/src/assets/images/blue_hat_icon_1784029248993.jpg';
 
+// Types for Hats Ritual
+interface HatsData {
+  azotea: string;
+  blanco: string;
+  rojo: string;
+  negro: string;
+  amarillo: string;
+  verde: string;
+  azul: string;
+}
+
+// Types for Strategic Ladder Ritual
+interface LadderData {
+  instinto: string;
+  emocion: string;
+  jugada: string;
+  posicion: string;
+  ejecucion: string;
+  bitacora: string;
+  inmunidad: string;
+}
+
+const INITIAL_HATS_DATA: HatsData = {
+  azotea: '',
+  blanco: '',
+  rojo: '',
+  negro: '',
+  amarillo: '',
+  verde: '',
+  azul: ''
+};
+
+const INITIAL_LADDER_DATA: LadderData = {
+  instinto: '',
+  emocion: '',
+  jugada: '',
+  posicion: '',
+  ejecucion: '',
+  bitacora: '',
+  inmunidad: ''
+};
 
 
 
@@ -157,28 +167,21 @@ const PRESETS_LADDER = {
 };
 
 export default function App() {
-  // Firebase Auth & Cloud Firestore State
-  const { user, signInWithGoogle, logout, authError, clearAuthError } = useAuth();
+  // Autonomous Local Storage State (100% Private & Offline-ready)
   const [savedHatsRituals, setSavedHatsRituals] = useState<SavedHatsRitual[]>([]);
   const [savedLadderRituals, setSavedLadderRituals] = useState<SavedLadderRitual[]>([]);
-  const [isSavingCloud, setIsSavingCloud] = useState<boolean>(false);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isGeneratingSuggestion, setIsGeneratingSuggestion] = useState<string | null>(null);
-  const [cloudMessage, setCloudMessage] = useState<string | null>(null);
+  const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
 
-  // Subscribe to real-time Cloud Firestore rituals when user is authenticated
+  // Subscribe to real-time local storage rituals
   useEffect(() => {
-    if (!user) {
-      setSavedHatsRituals([]);
-      setSavedLadderRituals([]);
-      return;
-    }
-
-    const unsubscribeHats = subscribeHatsRituals(user.uid, (rituals) => {
+    const unsubscribeHats = subscribeHatsRituals((rituals) => {
       setSavedHatsRituals(rituals);
     });
 
-    const unsubscribeLadder = subscribeLadderRituals(user.uid, (rituals) => {
+    const unsubscribeLadder = subscribeLadderRituals((rituals) => {
       setSavedLadderRituals(rituals);
     });
 
@@ -186,7 +189,7 @@ export default function App() {
       unsubscribeHats();
       unsubscribeLadder();
     };
-  }, [user]);
+  }, []);
 
   const [activeTab, setActiveTab] = useState<'hats' | 'ladder' | 'trainer' | 'chat'>(() => {
     const savedTab = localStorage.getItem('chalamandra_active_tab');
@@ -277,39 +280,34 @@ export default function App() {
     sound.playClick();
   };
 
-  const handleCloudSave = async () => {
-    if (!user) {
-      setValidationError('Necesitas iniciar sesión con Google para guardar tus rituales en la nube.');
-      return;
-    }
-
-    setIsSavingCloud(true);
-    setCloudMessage(null);
+  const handleSaveRitual = async () => {
+    setIsSaving(true);
+    setSavedMessage(null);
 
     try {
       if (activeTab === 'hats') {
         if (!hatsData.azotea.trim() || !hatsData.azul.trim()) {
           setValidationError('Completa al menos el Conflicto (Paso 1) y tu Comando Azul (Paso 7) para guardar.');
-          setIsSavingCloud(false);
+          setIsSaving(false);
           return;
         }
-        await saveHatsRitual(user.uid, hatsData);
-        setCloudMessage('✓ Ritual de 6 Sombreros guardado con éxito en Firestore');
+        await saveHatsRitual(hatsData);
+        setSavedMessage('✓ Ritual de 6 Sombreros guardado con éxito en tu historial');
       } else {
         if (!ladderData.instinto.trim() || !ladderData.ejecucion.trim()) {
           setValidationError('Completa al menos el Instinto (Nivel 1) y tu Ejecución (Nivel 5) para guardar.');
-          setIsSavingCloud(false);
+          setIsSaving(false);
           return;
         }
-        await saveLadderRitual(user.uid, ladderData);
-        setCloudMessage('✓ Mapa de Escalera Estratégica guardado con éxito en Firestore');
+        await saveLadderRitual(ladderData);
+        setSavedMessage('✓ Mapa de Escalera Estratégica guardado con éxito en tu historial');
       }
     } catch (err: any) {
-      console.error('Error al guardar en la nube:', err);
-      setValidationError('Error al guardar en Firestore: ' + (err.message || 'Inténtalo nuevamente.'));
+      console.error('Error al guardar ritual:', err);
+      setValidationError('Error al guardar: ' + (err.message || 'Inténtalo nuevamente.'));
     } finally {
-      setIsSavingCloud(false);
-      setTimeout(() => setCloudMessage(null), 4000);
+      setIsSaving(false);
+      setTimeout(() => setSavedMessage(null), 4000);
     }
   };
 
@@ -344,18 +342,16 @@ export default function App() {
   };
 
   const handleDeleteHatsRitual = async (ritualId: string) => {
-    if (!user) return;
     try {
-      await deleteHatsRitual(user.uid, ritualId);
+      await deleteHatsRitual(ritualId);
     } catch (err) {
       console.error('Error al eliminar ritual:', err);
     }
   };
 
   const handleDeleteLadderRitual = async (ritualId: string) => {
-    if (!user) return;
     try {
-      await deleteLadderRitual(user.uid, ritualId);
+      await deleteLadderRitual(ritualId);
     } catch (err) {
       console.error('Error al eliminar ritual:', err);
     }
@@ -384,6 +380,223 @@ export default function App() {
 
   const totalSteps = 7;
 
+  // Metadata for Hats (Edward de Bono)
+  const hatsStepsInfo = [
+    {
+      index: 0,
+      field: 'azotea' as const,
+      label: 'Paso 1 de 7 • El Conflicto',
+      title: 'Define tu "Azotea"',
+      desc: 'El conflicto vivo. La situación, dilema o crisis que te tiene dando vueltas en bucle sin salida aparente.',
+      placeholder: 'Ej. Mi relación caótica, el cliente que no paga y exige de más, o el miedo paralizante a renunciar a mi empleo corporativo...',
+      type: 'input',
+      icon: Layers,
+      color: 'text-amber-500',
+      glowColor: 'rgba(245, 158, 11, 0.2)',
+      hatColor: 'border-amber-500/40 text-amber-500 bg-amber-500/10',
+      help: '¿Qué problema drena tu energía actualmente? Defínelo con honestidad y brevedad.',
+      cssColor: '#f59e0b'
+    },
+    {
+      index: 1,
+      field: 'blanco' as const,
+      label: 'Paso 2 de 7 • Sombrero Blanco',
+      title: 'Hechos Duros y Datos',
+      desc: 'Información pura y objetiva. Sin interpretaciones, asunciones, juicios ni emociones. Solo hechos verificables.',
+      placeholder: 'Ej. He recibido 3 facturas vencidas. Mi socio no responde los emails desde el martes. No tenemos un contrato firmado por escrito.',
+      type: 'textarea',
+      icon: FileText,
+      color: 'text-slate-100',
+      glowColor: 'rgba(248, 250, 252, 0.2)',
+      hatColor: 'border-slate-300/40 text-slate-100 bg-slate-300/10',
+      help: '¿Qué cifras, fechas, palabras textuales o documentos tienes para respaldar esto?',
+      cssColor: '#f8fafc'
+    },
+    {
+      index: 2,
+      field: 'rojo' as const,
+      label: 'Paso 3 de 7 • Sombrero Rojo',
+      title: 'Emociones Crudas e Intuición',
+      desc: 'Nombra el monstruo por su nombre sin disfraces lógicos. Expresa tu rabia, miedo, sospechas, intuiciones y deseos.',
+      placeholder: 'Ej. Siento pánico de quedarme sola. Me hierve la sangre de rabia cuando me ignora. Intuyo que hay algo deshonesto aquí.',
+      type: 'textarea',
+      icon: Heart,
+      color: 'text-rose-500',
+      glowColor: 'rgba(244, 63, 94, 0.2)',
+      hatColor: 'border-rose-500/40 text-rose-500 bg-rose-500/10',
+      help: 'No justifiques tus emociones. Si sientes miedo, dilo. No hay espacio para la lógica en el sombrero rojo.',
+      cssColor: '#f43f5e'
+    },
+    {
+      index: 3,
+      field: 'negro' as const,
+      label: 'Paso 4 de 7 • Sombrero Negro',
+      title: 'Riesgos Reales y Advertencias',
+      desc: 'El abogado del diablo. ¿Qué puede salir mal? Evalúa de forma crítica los costes reales, peligros, fallos y problemas potenciales.',
+      placeholder: 'Ej. Si sigo posponiendo la decisión, perderé mis ahorros en 3 meses. Mi reputación profesional se desgastará ante el mercado.',
+      type: 'textarea',
+      icon: ShieldAlert,
+      color: 'text-violet-400',
+      glowColor: 'rgba(167, 139, 250, 0.2)',
+      hatColor: 'border-violet-500/40 text-violet-400 bg-violet-500/10',
+      help: 'Evalúa la pérdida máxima si las cosas siguen igual o empeoran. Sé realista y calculador.',
+      cssColor: '#a78bfa'
+    },
+    {
+      index: 4,
+      field: 'amarillo' as const,
+      label: 'Paso 5 de 7 • Sombrero Amarillo',
+      title: 'Oportunidades y Beneficios',
+      desc: 'Pensamiento positivo y constructivo. ¿Qué billete flota en este charco? ¿Qué ganancias ocultas o aprendizajes tiene esta crisis?',
+      placeholder: 'Ej. Puedo recuperar mi autonomía absoluta. Aprenderé a establecer límites estrictos. Me obliga a diversificar mi cartera de clientes.',
+      type: 'textarea',
+      icon: Sun,
+      color: 'text-yellow-400',
+      glowColor: 'rgba(250, 204, 21, 0.2)',
+      hatColor: 'border-yellow-400/40 text-yellow-400 bg-yellow-400/10',
+      help: 'Incluso en el peor escenario hay una semilla de oportunidad. ¿Cuál es el beneficio de resolver esto de una vez por todas?',
+      cssColor: '#eab308'
+    },
+    {
+      index: 5,
+      field: 'verde' as const,
+      label: 'Paso 6 de 7 • Creatividad Disruptiva',
+      title: 'Alternativas y Salidas Locas',
+      desc: 'Creatividad pura. Rompe el patrón con ideas bizarras, inesperadas o salidas de lo común. No te limites por lo factible.',
+      placeholder: 'Ej. Mudarme de ciudad sin avisar. Escribir un libro humorístico basado en sus mensajes. Crear un contra-ofrecimiento absurdo.',
+      type: 'textarea',
+      icon: Lightbulb,
+      color: 'text-emerald-400',
+      glowColor: 'rgba(52, 211, 153, 0.2)',
+      hatColor: 'border-emerald-400/40 text-emerald-400 bg-emerald-400/10',
+      help: 'Deja volar la imaginación. Las mejores soluciones a menudo nacen de ideas que al principio parecían ridículas.',
+      cssColor: '#34d399'
+    },
+    {
+      index: 6,
+      field: 'azul' as const,
+      label: 'Paso 7 de 7 • Sombrero Azul',
+      title: 'El Comando de Salida',
+      desc: 'La acción irreversible y concreta que te comprometes a ejecutar ESTA MISMA SEMANA para quebrar el bucle.',
+      placeholder: 'Ej. El jueves a las 10:00 AM envío el correo de rescisión de contrato y reservo mi primera sesión de consultoría alternativa.',
+      type: 'input',
+      icon: Terminal,
+      color: 'text-cyan-400',
+      glowColor: 'rgba(34, 211, 238, 0.2)',
+      hatColor: 'border-cyan-400/40 text-cyan-400 bg-cyan-400/10',
+      help: 'Una sola acción. Clara, medible, realista e irreversible. Tiene que doler o liberar.',
+      cssColor: '#22d3ee'
+    }
+  ];
+
+  // Metadata for Strategic Ladder (Escalera Estratégica - Human Interactions)
+  const ladderStepsInfo = [
+    {
+      index: 0,
+      field: 'instinto' as const,
+      label: 'Nivel 1 • Instinto y Señales',
+      title: 'El Impacto Visceral',
+      desc: 'La alarma física o contradicción inmediata que detectó tu cuerpo. ¿Hubo un desajuste físico, un nudo en el estómago o una sonrisa falsa?',
+      placeholder: 'Ej. El estómago se me contrajo de golpe. Su sonrisa era amable pero sus palabras destilaban desdén pasivo-agresivo...',
+      type: 'textarea',
+      icon: Eye,
+      color: 'text-rose-500',
+      glowColor: 'rgba(244, 63, 94, 0.2)',
+      hatColor: 'border-rose-500/40 text-rose-500 bg-rose-500/10',
+      help: 'La incongruencia corporal es el primer cortafuegos del instinto estratégico. Anota el síntoma.',
+      cssColor: '#f43f5e'
+    },
+    {
+      index: 1,
+      field: 'emocion' as const,
+      label: 'Nivel 2 • Emoción e Inducción',
+      title: 'La Trampa Psicológica',
+      desc: '¿Qué emoción o creencia limitante intentaron inyectarte para desestabilizarte? (Ej. Culpa reprimida, vergüenza inducida, duda de tu valor).',
+      placeholder: 'Ej. Intentó inducirme vergüenza y duda instantánea sobre si realmente soy capaz de sacar adelante mis reportes.',
+      type: 'textarea',
+      icon: Shield,
+      color: 'text-violet-400',
+      glowColor: 'rgba(167, 139, 250, 0.2)',
+      hatColor: 'border-violet-500/40 text-violet-400 bg-violet-500/10',
+      help: 'El manipulador siempre busca sembrar una duda interna. Al detectarla, neutralizas el anclaje.',
+      cssColor: '#a78bfa'
+    },
+    {
+      index: 2,
+      field: 'jugada' as const,
+      label: 'Nivel 3 • Clasificación del Patrón',
+      title: 'Identifica la "Jugada"',
+      desc: 'Clasifica el tipo de escenario estratégico activo. ¿Es un "Testeo Cruel" (broma con dardo), "Silencio Castigador", o un "Doble Vínculo"?',
+      placeholder: 'Ej. Es un Testeo Cruel clásico. Lanza un dardo disfrazado de broma para ver si salto enfadado o si me disculpo sumisamente.',
+      type: 'input',
+      icon: Target,
+      color: 'text-amber-500',
+      glowColor: 'rgba(245, 158, 11, 0.2)',
+      hatColor: 'border-amber-500/40 text-amber-500 bg-amber-500/10',
+      help: 'Ponerle nombre al truco desarma de inmediato su ilusión mágica de control.',
+      cssColor: '#f59e0b'
+    },
+    {
+      index: 3,
+      field: 'posicion' as const,
+      label: 'Nivel 4 • Posición y Roles',
+      title: 'La Máscara Relacional',
+      desc: '¿Desde qué rol o jerarquía ficticia te habló el otro (Ej. Juez, Depredador) y en qué rol pretendía encasillarte a ti?',
+      placeholder: 'Ej. Habla desde el rol de Juez superior y pretende empujarme al rol de Niño sumiso que se ve obligado a justificarse.',
+      type: 'textarea',
+      icon: Layers,
+      color: 'text-slate-100',
+      glowColor: 'rgba(248, 250, 252, 0.2)',
+      hatColor: 'border-slate-300/40 text-slate-100 bg-slate-300/10',
+      help: 'La comunicación asimétrica requiere tu consentimiento. Al rechazar el rol de sumisión, el juego colapsa.',
+      cssColor: '#f8fafc'
+    },
+    {
+      index: 4,
+      field: 'ejecucion' as const,
+      label: 'Nivel 5 • La Ejecución del Parche',
+      title: 'Desarme y Cambio de Eje',
+      desc: 'Tu respuesta estratégica de alta compostura. Silencio táctico de dos segundos, humor absurdo, o pregunta invertida que rompa el marco.',
+      placeholder: 'Ej. Mantengo silencio mirándole fijamente por dos segundos, sonrío relajado y le digo: "El reporte quedó impecable, gracias. Pero me llama la atención... ¿te suele preocupar seguido que los proyectos queden grandes?"',
+      type: 'textarea',
+      icon: Zap,
+      color: 'text-yellow-400',
+      glowColor: 'rgba(250, 204, 21, 0.2)',
+      hatColor: 'border-yellow-400/40 text-yellow-400 bg-yellow-400/10',
+      help: 'No entregues el combustible del enojo ni la justificación. Devuelve la presión con frialdad.',
+      cssColor: '#eab308'
+    },
+    {
+      index: 5,
+      field: 'bitacora' as const,
+      label: 'Nivel 6 • Bitácora de Entrenamiento',
+      title: 'El Registro y Patrón',
+      desc: '¿Cómo vas a registrar este patrón para que tu mente lo automatice y responda en milisegundos cuando vuelva a ocurrir?',
+      placeholder: 'Ej. Registrado como "Dardo Pasivo-Agresivo de Oficina". El gatillo es un comentario condescendiente rematado con risas.',
+      type: 'textarea',
+      icon: Bookmark,
+      color: 'text-emerald-400',
+      glowColor: 'rgba(52, 211, 153, 0.2)',
+      hatColor: 'border-emerald-400/40 text-emerald-400 bg-emerald-400/10',
+      help: 'La maestría social es un entrenamiento de reflejos. Cataloga el caso para que sea un aprendizaje permanente.',
+      cssColor: '#34d399'
+    },
+    {
+      index: 6,
+      field: 'inmunidad' as const,
+      label: 'Nivel 7 • Comando de Inmunidad',
+      title: 'El Blindaje Psicológico',
+      desc: 'La creencia fundamental o código interno que instalas para que este tipo de ataques reboten en ti sin causarte mella en absoluto.',
+      placeholder: 'Ej. Mi valor profesional se define por mis logros reales y no depende del testeo neurótico de terceros desocupados.',
+      type: 'input',
+      icon: Terminal,
+      color: 'text-cyan-400',
+      glowColor: 'rgba(34, 211, 238, 0.2)',
+      hatColor: 'border-cyan-400/40 text-cyan-400 bg-cyan-400/10',
+      help: 'Este es el parche final para tu sistema operativo mental. Conviértelo en un mantra firme.',
+      cssColor: '#22d3ee'
+    }
+  ];
 
   // Helper selectors for current steps
   const activeStep = activeTab === 'hats' ? hatsStep : ladderStep;
@@ -512,22 +725,102 @@ export default function App() {
   };
 
   // Real-time calculated indicators
+  const getInteractiveMetrics = () => {
+    if (activeTab === 'hats') {
+      const o = Math.min(100, Math.round((hatsData.blanco.trim().length / 120) * 100));
+      const e = Math.min(100, Math.round((hatsData.rojo.trim().length / 100) * 100));
+      const r = Math.min(100, Math.round((hatsData.negro.trim().length / 100) * 100));
+      const g = Math.min(100, Math.round((hatsData.amarillo.trim().length / 100) * 100));
+      const c = Math.min(100, Math.round((hatsData.verde.trim().length / 120) * 100));
+      const a = Math.min(100, Math.round((hatsData.azul.trim().length / 80) * 100));
+      return { blanco: o, rojo: e, negro: r, amarillo: g, verde: c, azul: a };
+    } else {
+      const i = Math.min(100, Math.round((ladderData.instinto.trim().length / 80) * 100));
+      const em = Math.min(100, Math.round((ladderData.emocion.trim().length / 80) * 100));
+      const ju = Math.min(100, Math.round((ladderData.jugada.trim().length / 50) * 100));
+      const po = Math.min(100, Math.round((ladderData.posicion.trim().length / 80) * 100));
+      const ej = Math.min(100, Math.round((ladderData.ejecucion.trim().length / 100) * 100));
+      const bi = Math.min(100, Math.round((ladderData.bitacora.trim().length / 80) * 100));
+      const inm = Math.min(100, Math.round((ladderData.inmunidad.trim().length / 60) * 100));
+      return { instinto: i, emocion: em, jugada: ju, posicion: po, ejecucion: ej, bitacora: bi, inmunidad: inm };
+    }
+  };
 
+  const metrics = getInteractiveMetrics();
 
   // Coherence Diagnostics calculations for Hats Mode
-  const metrics = getInteractiveMetrics(activeTab, hatsData, ladderData);
+  const hatsVerdeLen = hatsData.verde.trim().length;
+  const hatsAzulLen = hatsData.azul.trim().length;
+  const hatsNegroLen = hatsData.negro.trim().length;
+  const hatsAmarilloLen = hatsData.amarillo.trim().length;
 
+  const isHatsVerdeStrong = hatsVerdeLen >= 10;
+  const isHatsAzulStrong = hatsAzulLen >= 15;
+  const isHatsNegroHeavier = hatsNegroLen > hatsAmarilloLen;
+
+  const getHatsVerdeFeedback = () => {
+    return isHatsVerdeStrong
+      ? '✓ Módulo creativo activo. Tu mente ha generado alternativas viables fuera del marco común.'
+      : '⚠️ MÓDULO CREATIVO DÉBIL: Tu sombrero verde está vacío. Arriésgate a proponer soluciones más alocadas o bizarras.';
+  };
+
+  const getHatsAzulFeedback = () => {
+    return isHatsAzulStrong
+      ? '✓ Comando ejecutivo robusto. El paso 7 es concreto, medible e irreversible.'
+      : '⚠️ PARÁLISIS OPERATIVA: El comando de acción azul es demasiado abstracto o tímido. Necesita un gatillo que duela o libere esta semana.';
+  };
+
+  const getHatsCoherenceFeedback = () => {
+    if (isHatsNegroHeavier) {
+      return '⚠️ HEGEMONÍA DEL TEMOR (Negro > Amarillo): Las advertencias y el miedo eclipsan las oportunidades. Riesgo de inacción.';
+    } else if (hatsNegroLen === 0 && hatsAmarilloLen === 0) {
+      return '• Balanza de viabilidad pendiente: Completa riesgos (Negro) y oportunidades (Amarillo).';
+    } else {
+      return '✓ BALANCE DE PODER POSITIVO: Tus oportunidades superan tus miedos estratégicos. El camino está desbloqueado.';
+    }
+  };
+
+  // Coherence Diagnostics calculations for Ladder Mode
+  const ladderEjecucionLen = ladderData.ejecucion.trim().length;
+  const ladderInmunidadLen = ladderData.inmunidad.trim().length;
+  const isLadderEjecucionStrong = ladderEjecucionLen >= 15;
+  const isLadderInmunidadStrong = ladderInmunidadLen >= 15;
+  const isLadderPassive = ladderData.posicion.toLowerCase().includes('víctima') || ladderData.posicion.toLowerCase().includes('sumiso') || ladderData.posicion.toLowerCase().includes('niño') || ladderData.posicion.toLowerCase().includes('justific');
+
+  const getLadderEjecucionFeedback = () => {
+    return isLadderEjecucionStrong
+      ? '✓ Contraataque táctico maduro. Planteas un desarme sin enojo ni sumisión.'
+      : '⚠️ RESPUESTA REACCIONARIA: Tu ejecución táctica es demasiado corta. Riesgo de estallar en ira o dar explicaciones inútiles.';
+  };
+
+  const getLadderInmunidadFeedback = () => {
+    return isLadderInmunidadStrong
+      ? '✓ Blindaje de nivel 7 robusto. Tu creencia erradica la vulnerabilidad visceral.'
+      : '⚠️ VULNERABILIDAD PERSISTENTE: No has blindado tu sistema operativo mental. El dardo volverá a dañarte.';
+  };
+
+  const getLadderCoherenceFeedback = () => {
+    if (isLadderPassive) {
+      return '⚠️ DETECTADO ANCLAJE SUMISO: Estás aceptando el marco o rol de víctima del manipulador. Debes quebrar el rol.';
+    } else if (ladderData.posicion.trim().length === 0) {
+      return '• Pendiente evaluar el tablero relacional y máscaras de control.';
+    } else {
+      return '✓ POSICIONAMIENTO DE SOBERANÍA: Mantienes el marco emocional firme frente a la agresión externa.';
+    }
+  };
+
+  // Text builders
   const getRawTextManifesto = () => {
     if (activeTab === 'hats') {
-      const greenStatus = isHatsVerdeStrong(hatsData) 
+      const greenStatus = isHatsVerdeStrong 
         ? '✓ Módulo creativo activo. Salidas no convencionales listas.' 
         : '⚠️ ADVERTENCIA: Módulo creativo vacío o demasiado pasivo.';
         
-      const blueStatus = isHatsAzulStrong(hatsData) 
+      const blueStatus = isHatsAzulStrong 
         ? '✓ Comando de ejecución listo para correr.' 
         : '⚠️ PARÁLISIS: Comando azul demasiado débil.';
 
-      const balanceStatus = isHatsNegroHeavier(hatsData)
+      const balanceStatus = isHatsNegroHeavier
         ? '⚠️ RIESGO: El Negro pesa más que el Amarillo. Inacción probable.'
         : '✓ VIABILIDAD: Las oportunidades compensan o superan los temores evaluados.';
 
@@ -557,15 +850,15 @@ export default function App() {
 ║ #RitualChalamandra #EdwardDeBonoPro
 ╚═══════════════════════════════════════════════════════════╝`;
     } else {
-      const execStatus = isLadderEjecucionStrong(ladderData) 
+      const execStatus = isLadderEjecucionStrong 
         ? '✓ Desarme y cambio de eje táctico estructurado.' 
         : '⚠️ RESPUESTA DEBIL: Parche inmaduro ante la agresión.';
         
-      const immunityStatus = isLadderInmunidadStrong(ladderData) 
+      const immunityStatus = isLadderInmunidadStrong 
         ? '✓ Blindaje de nivel 7 robustecido.' 
         : '⚠️ VULNERABILIDAD: Código de inmunidad incompleto.';
 
-      const frameworkStatus = isLadderPassive(ladderData)
+      const frameworkStatus = isLadderPassive
         ? '⚠️ RIESGO: Detectado rol asimétrico de sumisión frente al agresor.'
         : '✓ SOBERANÍA: Rechazas el marco asimétrico con compostura superior.';
 
@@ -628,6 +921,81 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
+  // Visual helper lists for the interactive grid (La Armería de Sombreros)
+  const academyHats = [
+    {
+      id: 'blanco',
+      title: 'Sombrero Blanco',
+      icon: FileText,
+      image: WHITE_HAT_IMAGE,
+      color: 'bg-slate-300 text-slate-900',
+      borderColor: 'border-slate-300/40',
+      auraColor: 'shadow-slate-300/20',
+      mantra: 'La verdad objetiva no tiene partido.',
+      desc: 'Enfocado en recopilar hechos medibles, datos históricos, cifras y transacciones reales. Se despoja de opiniones y asunciones.',
+      questions: ['¿Cuáles son los números exactos?', '¿Qué pruebas tangibles existen?', '¿Qué dijo textualmente la otra persona?']
+    },
+    {
+      id: 'rojo',
+      title: 'Sombrero Rojo',
+      icon: Heart,
+      image: RED_HAT_IMAGE,
+      color: 'bg-rose-600 text-white',
+      borderColor: 'border-rose-500/40',
+      auraColor: 'shadow-rose-600/30',
+      mantra: 'Las corazonadas mandan sobre el plano oculto.',
+      desc: 'Libera la intuición visceral, el pánico, el odio, la ilusión o el rencor sin filtros lógicos ni justificaciones de ningún tipo.',
+      questions: ['¿Qué me dice el estómago?', '¿Qué emoción me provoca esta situación?', '¿Tengo sospechas intuitivas?']
+    },
+    {
+      id: 'negro',
+      title: 'Sombrero Negro',
+      icon: ShieldAlert,
+      image: BLACK_HAT_IMAGE,
+      color: 'bg-violet-700 text-white',
+      borderColor: 'border-violet-500/40',
+      auraColor: 'shadow-violet-600/30',
+      mantra: 'Prevenir la catástrofe es asegurar la supervivencia.',
+      desc: 'El evaluador de riesgos más quirúrgico. Encuentra los agujeros en el plan, pérdidas máximas y contingencias críticas.',
+      questions: ['¿Qué es lo peor que puede pasar?', '¿Cuánto dinero o reputación arriesgamos?', '¿Dónde está la trampa?']
+    },
+    {
+      id: 'amarillo',
+      title: 'Sombrero Amarillo',
+      icon: Sun,
+      image: YELLOW_HAT_IMAGE,
+      color: 'bg-yellow-500 text-slate-950',
+      borderColor: 'border-yellow-400/40',
+      auraColor: 'shadow-yellow-500/30',
+      mantra: 'La oportunidad brilla hasta en la fractura.',
+      desc: 'Pensamiento constructivo. Encuentra los beneficios colaterales, los aprendizajes forzados y el valor oculto del dilema.',
+      questions: ['¿Cómo capitalizo esta crisis?', '¿Qué fortalezas nuevas me da?', '¿Dónde hay un billete flotando?']
+    },
+    {
+      id: 'verde',
+      title: 'Sombrero Verde',
+      icon: Lightbulb,
+      image: GREEN_HAT_IMAGE,
+      color: 'bg-emerald-500 text-slate-950',
+      borderColor: 'border-emerald-400/40',
+      auraColor: 'shadow-emerald-500/30',
+      mantra: 'Si la regla te atrapa, rompe la mesa.',
+      desc: 'Creatividad extrema y pensamiento disruptivo. Soluciones locas, humor absurdo o movimientos laterales inesperados.',
+      questions: ['¿Qué haría un loco en mi lugar?', '¿Cómo puedo alterar las reglas drásticamente?', '¿Qué salida graciosa existe?']
+    },
+    {
+      id: 'azul',
+      title: 'Sombrero Azul',
+      icon: Terminal,
+      image: BLUE_HAT_IMAGE,
+      color: 'bg-cyan-500 text-slate-950',
+      borderColor: 'border-cyan-400/40',
+      auraColor: 'shadow-cyan-500/30',
+      mantra: 'El general no analiza, ordena la marcha.',
+      desc: 'El control ejecutivo de salida. Toma las riendas, destila todo el escaneo y establece un comando de acción de choque.',
+      questions: ['¿Cuál es la primera acción concreta?', '¿Qué paso irreversible daré hoy?', '¿Cómo mido el cumplimiento?']
+    }
+  ];
 
   return (
     <div className="min-h-screen bg-[#060a13] text-gray-200 flex flex-col items-center justify-start p-4 md:p-8 relative overflow-hidden font-sans">
@@ -643,51 +1011,25 @@ export default function App() {
 
       <div className="max-w-4xl w-full bg-[#0f172a] border border-slate-800/80 rounded-3xl shadow-2xl relative overflow-hidden p-5 md:p-8 my-4">
         
-        {/* FIREBASE AUTHENTICATION & CLOUD SYNC CONTROL BAR */}
+        {/* AUTONOMOUS STORAGE & BRANDING CONTROL BAR */}
         <div className="bg-[#0b1120] border border-slate-800/90 rounded-2xl p-3.5 mb-4 flex flex-col sm:flex-row items-center justify-between gap-3 relative z-20">
           <div className="flex items-center gap-3">
-            {user ? (
-              <div className="flex items-center gap-3">
-                {user.photoURL ? (
-                  <img 
-                    src={user.photoURL} 
-                    alt={user.displayName || 'Usuario'} 
-                    className="w-10 h-10 rounded-full border border-amber-500/50 shadow-sm"
-                  />
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center font-black text-sm">
-                    {user.displayName?.[0] || 'U'}
-                  </div>
-                )}
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-black text-slate-100">
-                      {user.displayName || 'Usuario Chalamandra'}
-                    </span>
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold flex items-center gap-1">
-                      <Cloud className="w-3 h-3 animate-pulse" /> Firestore Activo
-                    </span>
-                  </div>
-                  <span className="text-[11px] text-slate-400 block font-mono">
-                    {user.email}
-                  </span>
-                </div>
+            <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-amber-400">
+              <Database className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black text-slate-100">
+                  Almacenamiento Local Autónomo
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold flex items-center gap-1">
+                  <ShieldCheck className="w-3 h-3" /> 100% Privado
+                </span>
               </div>
-            ) : (
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-amber-400">
-                  <Database className="w-5 h-5" />
-                </div>
-                <div>
-                  <span className="text-xs font-extrabold text-slate-200 block">
-                    Modo Nube Chalamandra (Firebase)
-                  </span>
-                  <span className="text-[11px] text-slate-400">
-                    Inicia sesión con Google para sincronizar tus rituales en la nube
-                  </span>
-                </div>
-              </div>
-            )}
+              <span className="text-[11px] text-slate-400">
+                Tus rituales se guardan directamente en tu navegador sin requerir cuentas ni nube externa
+              </span>
+            </div>
           </div>
 
           <div className="flex items-center gap-2 self-end sm:self-auto w-full sm:w-auto">
@@ -717,34 +1059,13 @@ export default function App() {
               <ExternalLink className="w-3 h-3 text-purple-400" />
             </a>
 
-            {user ? (
-              <>
-                <button
-                  onClick={() => setShowHistoryModal(true)}
-                  className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-slate-850 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-bold transition-all cursor-pointer shadow-sm"
-                >
-                  <Clock className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>Mis Rituales ({savedHatsRituals.length + savedLadderRituals.length})</span>
-                </button>
-                <button
-                  onClick={logout}
-                  className="p-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 transition-all cursor-pointer"
-                  title="Cerrar sesión"
-                  aria-label="Cerrar sesión"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
-              </>
-            ) : (
-              <button
-                onClick={signInWithGoogle}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 via-rose-500 to-cyan-500 hover:from-amber-400 hover:to-cyan-400 text-slate-950 font-black text-xs transition-all shadow-md cursor-pointer"
-                aria-label="Iniciar sesión con Google"
-              >
-                <LogIn className="w-4 h-4" />
-                <span>Iniciar Sesión con Google</span>
-              </button>
-            )}
+            <button
+              onClick={() => setShowHistoryModal(true)}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500/20 to-cyan-500/20 hover:from-amber-500/30 hover:to-cyan-500/30 border border-amber-500/40 text-amber-300 text-xs font-bold transition-all cursor-pointer shadow-sm"
+            >
+              <Clock className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Mis Rituales ({savedHatsRituals.length + savedLadderRituals.length})</span>
+            </button>
           </div>
         </div>
 
@@ -801,34 +1122,18 @@ export default function App() {
           </div>
         </div>
 
-        {cloudMessage && (
+        {savedMessage && (
           <div className="mb-4 p-3.5 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-xs font-extrabold flex items-center justify-between animate-fade-in relative z-20">
             <span className="flex items-center gap-2">
               <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-              {cloudMessage}
+              {savedMessage}
             </span>
             <button 
-              onClick={() => setCloudMessage(null)}
+              onClick={() => setSavedMessage(null)}
               aria-label="Cerrar mensaje de notificación"
               className="text-emerald-400 hover:text-emerald-200 font-bold ml-2 text-xs cursor-pointer"
             >
               ✕
-            </button>
-          </div>
-        )}
-
-        {authError && (
-          <div className="mb-4 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs font-semibold flex items-center justify-between gap-3 relative z-20 shadow-md">
-            <div className="flex items-center gap-2.5">
-              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-              <span className="leading-relaxed">{authError}</span>
-            </div>
-            <button 
-              onClick={clearAuthError}
-              className="text-amber-400 hover:text-amber-200 font-black px-2 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-xs shrink-0 cursor-pointer transition-all"
-              title="Cerrar aviso"
-            >
-              ✕ Entendido
             </button>
           </div>
         )}
@@ -1088,13 +1393,9 @@ export default function App() {
         )}
 
         {activeTab === 'trainer' ? (
-          <Suspense fallback={<div className="p-8 text-center text-slate-400 text-sm">Cargando entrenador...</div>}>
-            <CognitiveTrainerTab />
-          </Suspense>
+          <CognitiveTrainerTab />
         ) : activeTab === 'chat' ? (
-          <Suspense fallback={<div className="p-8 text-center text-slate-400 text-sm">Cargando chat...</div>}>
-            <GeminiHatChatbot />
-          </Suspense>
+          <GeminiHatChatbot />
         ) : (
           /* Content Body with customized glowing border frame */
           <div 
@@ -1215,7 +1516,143 @@ export default function App() {
                   </motion.div>
                 )}
 
-                <ThermometerBar activeTab={activeTab} metrics={metrics} />
+                {/* Real-time Thermometers Bar (Interactivo / Dinámico) */}
+                <div className="bg-[#0b101c]/60 p-4 rounded-xl border border-slate-850 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                      <Sliders className="w-3.5 h-3.5" />
+                      Termómetros de Entrada en Tiempo Real
+                    </span>
+                    <span className="text-[10px] text-slate-500">Métricas de Complejidad</span>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {activeTab === 'hats' ? (
+                      <>
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[11px] font-medium text-slate-400">
+                            <span>⚪ Datos (Blanco)</span>
+                            <span className="font-mono">{metrics.blanco}%</span>
+                          </div>
+                          <div className="h-1.5 w-full bg-slate-900 rounded-full overflow-hidden">
+                            <div className="h-full bg-slate-300 rounded-full transition-all duration-300" style={{ width: `${metrics.blanco}%` }} />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[11px] font-medium text-slate-400">
+                            <span>🔴 Emoción (Rojo)</span>
+                            <span className="font-mono">{metrics.rojo}%</span>
+                          </div>
+                          <div className="h-1.5 w-full bg-slate-900 rounded-full overflow-hidden">
+                            <div className="h-full bg-rose-500 rounded-full transition-all duration-300" style={{ width: `${metrics.rojo}%` }} />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[11px] font-medium text-slate-400">
+                            <span>⚫ Riesgos (Negro)</span>
+                            <span className="font-mono">{metrics.negro}%</span>
+                          </div>
+                          <div className="h-1.5 w-full bg-slate-900 rounded-full overflow-hidden">
+                            <div className="h-full bg-violet-400 rounded-full transition-all duration-300" style={{ width: `${metrics.negro}%` }} />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[11px] font-medium text-slate-400">
+                            <span>🟡 Ganancia (Amarillo)</span>
+                            <span className="font-mono">{metrics.amarillo}%</span>
+                          </div>
+                          <div className="h-1.5 w-full bg-slate-900 rounded-full overflow-hidden">
+                            <div className="h-full bg-yellow-400 rounded-full transition-all duration-300" style={{ width: `${metrics.amarillo}%` }} />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[11px] font-medium text-slate-400">
+                            <span>🟢 Ideas (Verde)</span>
+                            <span className="font-mono">{metrics.verde}%</span>
+                          </div>
+                          <div className="h-1.5 w-full bg-slate-900 rounded-full overflow-hidden">
+                            <div className="h-full bg-emerald-400 rounded-full transition-all duration-300" style={{ width: `${metrics.verde}%` }} />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[11px] font-medium text-slate-400">
+                            <span>🔵 Comando (Azul)</span>
+                            <span className="font-mono">{metrics.azul}%</span>
+                          </div>
+                          <div className="h-1.5 w-full bg-slate-900 rounded-full overflow-hidden">
+                            <div className="h-full bg-cyan-400 rounded-full transition-all duration-300" style={{ width: `${metrics.azul}%` }} />
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[11px] font-medium text-slate-400">
+                            <span>👁️ N1 Instinto</span>
+                            <span className="font-mono">{metrics.instinto}%</span>
+                          </div>
+                          <div className="h-1.5 w-full bg-slate-900 rounded-full overflow-hidden">
+                            <div className="h-full bg-rose-500 rounded-full transition-all duration-300" style={{ width: `${metrics.instinto}%` }} />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[11px] font-medium text-slate-400">
+                            <span>🛡️ N2 Trampa</span>
+                            <span className="font-mono">{metrics.emocion}%</span>
+                          </div>
+                          <div className="h-1.5 w-full bg-slate-900 rounded-full overflow-hidden">
+                            <div className="h-full bg-violet-400 rounded-full transition-all duration-300" style={{ width: `${metrics.emocion}%` }} />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[11px] font-medium text-slate-400">
+                            <span>🎯 N3 Clasificación</span>
+                            <span className="font-mono">{metrics.jugada}%</span>
+                          </div>
+                          <div className="h-1.5 w-full bg-slate-900 rounded-full overflow-hidden">
+                            <div className="h-full bg-amber-500 rounded-full transition-all duration-300" style={{ width: `${metrics.jugada}%` }} />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[11px] font-medium text-slate-400">
+                            <span>⚡ N5 Parche</span>
+                            <span className="font-mono">{metrics.ejecucion}%</span>
+                          </div>
+                          <div className="h-1.5 w-full bg-slate-900 rounded-full overflow-hidden">
+                            <div className="h-full bg-yellow-400 rounded-full transition-all duration-300" style={{ width: `${metrics.ejecucion}%` }} />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[11px] font-medium text-slate-400">
+                            <span>📑 N6 Bitácora</span>
+                            <span className="font-mono">{metrics.bitacora}%</span>
+                          </div>
+                          <div className="h-1.5 w-full bg-slate-900 rounded-full overflow-hidden">
+                            <div className="h-full bg-emerald-400 rounded-full transition-all duration-300" style={{ width: `${metrics.bitacora}%` }} />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[11px] font-medium text-slate-400">
+                            <span>🔵 N7 Blindaje</span>
+                            <span className="font-mono">{metrics.inmunidad}%</span>
+                          </div>
+                          <div className="h-1.5 w-full bg-slate-900 rounded-full overflow-hidden">
+                            <div className="h-full bg-cyan-400 rounded-full transition-all duration-300" style={{ width: `${metrics.inmunidad}%` }} />
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
 
                 {/* Step navigation buttons */}
                 <div className="flex items-center justify-between pt-4 border-t border-slate-800/60 gap-4">
@@ -1270,32 +1707,32 @@ export default function App() {
                   
                   {activeTab === 'hats' ? (
                     <div className="space-y-2.5 text-sm">
-                      <div className={`p-3 rounded-xl flex items-center gap-2.5 border ${isHatsVerdeStrong(hatsData) ? 'bg-emerald-500/5 text-emerald-400 border-emerald-500/15' : 'bg-amber-500/5 text-amber-400 border-amber-500/15'}`}>
+                      <div className={`p-3 rounded-xl flex items-center gap-2.5 border ${isHatsVerdeStrong ? 'bg-emerald-500/5 text-emerald-400 border-emerald-500/15' : 'bg-amber-500/5 text-amber-400 border-amber-500/15'}`}>
                         <div className="w-2 h-2 rounded-full bg-current shrink-0" />
-                        <p className="font-medium">{getHatsVerdeFeedback(hatsData)}</p>
+                        <p className="font-medium">{getHatsVerdeFeedback()}</p>
                       </div>
-                      <div className={`p-3 rounded-xl flex items-center gap-2.5 border ${isHatsAzulStrong(hatsData) ? 'bg-emerald-500/5 text-emerald-400 border-emerald-500/15' : 'bg-rose-500/5 text-rose-400 border-rose-500/15'}`}>
+                      <div className={`p-3 rounded-xl flex items-center gap-2.5 border ${isHatsAzulStrong ? 'bg-emerald-500/5 text-emerald-400 border-emerald-500/15' : 'bg-rose-500/5 text-rose-400 border-rose-500/15'}`}>
                         <div className="w-2 h-2 rounded-full bg-current shrink-0" />
-                        <p className="font-medium">{getHatsAzulFeedback(hatsData)}</p>
+                        <p className="font-medium">{getHatsAzulFeedback()}</p>
                       </div>
-                      <div className={`p-3 rounded-xl flex items-center gap-2.5 border ${!isHatsNegroHeavier(hatsData) ? 'bg-emerald-500/5 text-emerald-400 border-emerald-500/15' : 'bg-rose-500/5 text-rose-400 border-rose-500/15'}`}>
+                      <div className={`p-3 rounded-xl flex items-center gap-2.5 border ${!isHatsNegroHeavier ? 'bg-emerald-500/5 text-emerald-400 border-emerald-500/15' : 'bg-rose-500/5 text-rose-400 border-rose-500/15'}`}>
                         <div className="w-2 h-2 rounded-full bg-current shrink-0" />
-                        <p className="font-medium">{getHatsCoherenceFeedback(hatsData)}</p>
+                        <p className="font-medium">{getHatsCoherenceFeedback()}</p>
                       </div>
                     </div>
                   ) : (
                     <div className="space-y-2.5 text-sm">
-                      <div className={`p-3 rounded-xl flex items-center gap-2.5 border ${isLadderEjecucionStrong(ladderData) ? 'bg-emerald-500/5 text-emerald-400 border-emerald-500/15' : 'bg-amber-500/5 text-amber-400 border-amber-500/15'}`}>
+                      <div className={`p-3 rounded-xl flex items-center gap-2.5 border ${isLadderEjecucionStrong ? 'bg-emerald-500/5 text-emerald-400 border-emerald-500/15' : 'bg-amber-500/5 text-amber-400 border-amber-500/15'}`}>
                         <div className="w-2 h-2 rounded-full bg-current shrink-0" />
-                        <p className="font-medium">{getLadderEjecucionFeedback(ladderData)}</p>
+                        <p className="font-medium">{getLadderEjecucionFeedback()}</p>
                       </div>
-                      <div className={`p-3 rounded-xl flex items-center gap-2.5 border ${isLadderInmunidadStrong(ladderData) ? 'bg-emerald-500/5 text-emerald-400 border-emerald-500/15' : 'bg-rose-500/5 text-rose-400 border-rose-500/15'}`}>
+                      <div className={`p-3 rounded-xl flex items-center gap-2.5 border ${isLadderInmunidadStrong ? 'bg-emerald-500/5 text-emerald-400 border-emerald-500/15' : 'bg-rose-500/5 text-rose-400 border-rose-500/15'}`}>
                         <div className="w-2 h-2 rounded-full bg-current shrink-0" />
-                        <p className="font-medium">{getLadderInmunidadFeedback(ladderData)}</p>
+                        <p className="font-medium">{getLadderInmunidadFeedback()}</p>
                       </div>
-                      <div className={`p-3 rounded-xl flex items-center gap-2.5 border ${!isLadderPassive(ladderData) ? 'bg-emerald-500/5 text-emerald-400 border-emerald-500/15' : 'bg-rose-500/5 text-rose-400 border-rose-500/15'}`}>
+                      <div className={`p-3 rounded-xl flex items-center gap-2.5 border ${!isLadderPassive ? 'bg-emerald-500/5 text-emerald-400 border-emerald-500/15' : 'bg-rose-500/5 text-rose-400 border-rose-500/15'}`}>
                         <div className="w-2 h-2 rounded-full bg-current shrink-0" />
-                        <p className="font-medium">{getLadderCoherenceFeedback(ladderData)}</p>
+                        <p className="font-medium">{getLadderCoherenceFeedback()}</p>
                       </div>
                     </div>
                   )}
@@ -1303,9 +1740,7 @@ export default function App() {
 
                 {/* Comparative AI Coherence Scanner (Gemini) */}
                 {activeTab === 'hats' && (
-                  <Suspense fallback={<div className="p-4 text-center text-slate-400 text-xs">Cargando escáner...</div>}>
-                    <AICoherenceScanner hatsData={hatsData} />
-                  </Suspense>
+                  <AICoherenceScanner hatsData={hatsData} />
                 )}
 
                 {/* Dashboard layout of decisions / elements */}
@@ -1479,12 +1914,10 @@ export default function App() {
                   {/* Historical Evolution Chart with Recharts */}
                   {activeTab === 'hats' && (
                     <div className="pt-1">
-                      <Suspense fallback={<div className="p-4 text-center text-slate-400 text-xs">Cargando gráfica...</div>}>
-                        <HatsEvolutionChart 
-                          savedRituals={savedHatsRituals}
-                          currentHatsData={hatsData}
-                        />
-                      </Suspense>
+                      <HatsEvolutionChart 
+                        savedRituals={savedHatsRituals}
+                        currentHatsData={hatsData}
+                      />
                     </div>
                   )}
 
@@ -1504,16 +1937,16 @@ export default function App() {
                 {/* Actions Toolbar */}
                 <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-800">
                   <button
-                    onClick={handleCloudSave}
-                    disabled={isSavingCloud}
+                    onClick={handleSaveRitual}
+                    disabled={isSaving}
                     className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-400 hover:to-rose-400 text-slate-950 rounded-xl font-black text-sm transition-all shadow-lg cursor-pointer disabled:opacity-50"
                   >
-                    {isSavingCloud ? (
+                    {isSaving ? (
                       <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
                     ) : (
-                      <CloudUpload className="w-4 h-4" />
+                      <BookmarkCheck className="w-4 h-4" />
                     )}
-                    <span>Guardar en la Nube (Firestore)</span>
+                    <span>Guardar en Historial Local</span>
                   </button>
 
                   <button
@@ -1886,14 +2319,14 @@ export default function App() {
               <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-5">
                 <div className="flex items-center gap-2.5">
                   <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
-                    <Cloud className="w-5 h-5" />
+                    <BookmarkCheck className="w-5 h-5" />
                   </div>
                   <div>
                     <h3 className="text-base font-black text-slate-100 uppercase tracking-wider">
-                      Historial en la Nube de Firestore
+                      Historial de Rituales Guardados
                     </h3>
                     <p className="text-xs text-slate-400">
-                      Tus rituales guardados y sincronizados en tiempo real
+                      Tus rituales guardados localmente de forma privada en tu navegador
                     </p>
                   </div>
                 </div>
@@ -1918,7 +2351,7 @@ export default function App() {
 
                   {savedHatsRituals.length === 0 ? (
                     <div className="p-4 rounded-2xl bg-slate-950/50 border border-slate-900 text-center text-xs text-slate-500">
-                      No tienes ningún ritual de 6 Sombreros guardado en la nube todavía.
+                      No tienes ningún ritual de 6 Sombreros guardado todavía.
                     </div>
                   ) : (
                     <div className="space-y-3">
@@ -1930,7 +2363,7 @@ export default function App() {
                           <div className="space-y-1 max-w-md">
                             <span className="text-[10px] font-mono text-slate-500 flex items-center gap-1">
                               <Clock className="w-3 h-3 text-cyan-400" />
-                              {ritual.createdAt ? new Date(ritual.createdAt.seconds * 1000).toLocaleString('es-ES') : 'Reciente'}
+                              {ritual.createdAt ? (typeof ritual.createdAt === 'object' && 'seconds' in (ritual.createdAt as any) ? new Date((ritual.createdAt as any).seconds * 1000).toLocaleString('es-ES') : new Date(ritual.createdAt).toLocaleString('es-ES')) : 'Reciente'}
                             </span>
                             <h5 className="text-xs font-bold text-slate-200 line-clamp-1">
                               {ritual.azotea || 'Ritual Sin Título'}
@@ -1950,7 +2383,7 @@ export default function App() {
                             <button
                               onClick={() => handleDeleteHatsRitual(ritual.id!)}
                               className="p-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 transition-all cursor-pointer"
-                              title="Eliminar de Firestore"
+                              title="Eliminar de historial"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -1970,7 +2403,7 @@ export default function App() {
 
                   {savedLadderRituals.length === 0 ? (
                     <div className="p-4 rounded-2xl bg-slate-950/50 border border-slate-900 text-center text-xs text-slate-500">
-                      No tienes mapas de Escalera Estratégica guardados en la nube todavía.
+                      No tienes mapas de Escalera Estratégica guardados todavía.
                     </div>
                   ) : (
                     <div className="space-y-3">
@@ -1982,7 +2415,7 @@ export default function App() {
                           <div className="space-y-1 max-w-md">
                             <span className="text-[10px] font-mono text-slate-500 flex items-center gap-1">
                               <Clock className="w-3 h-3 text-cyan-400" />
-                              {ritual.createdAt ? new Date(ritual.createdAt.seconds * 1000).toLocaleString('es-ES') : 'Reciente'}
+                              {ritual.createdAt ? (typeof ritual.createdAt === 'object' && 'seconds' in (ritual.createdAt as any) ? new Date((ritual.createdAt as any).seconds * 1000).toLocaleString('es-ES') : new Date(ritual.createdAt).toLocaleString('es-ES')) : 'Reciente'}
                             </span>
                             <h5 className="text-xs font-bold text-slate-200 line-clamp-1">
                               Instinto: {ritual.instinto || 'Sin instinto'}
@@ -2002,7 +2435,7 @@ export default function App() {
                             <button
                               onClick={() => handleDeleteLadderRitual(ritual.id!)}
                               className="p-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 transition-all cursor-pointer"
-                              title="Eliminar de Firestore"
+                              title="Eliminar de historial"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -2117,12 +2550,10 @@ export default function App() {
               <span className="hidden sm:inline">Mentor 6 Sombreros (Gemini)</span>
             </button>
           ) : (
-            <Suspense fallback={<div className="p-4 text-center text-slate-400 text-xs">Cargando mentor...</div>}>
-              <GeminiHatChatbot
-                isFloating={true}
-                onClose={() => setShowFloatingChat(false)}
-              />
-            </Suspense>
+            <GeminiHatChatbot
+              isFloating={true}
+              onClose={() => setShowFloatingChat(false)}
+            />
           )}
         </div>
       )}
