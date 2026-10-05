@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getAIClient, GEMINI_MODEL } from './_lib/gemini';
-import { sanitizeString, isKeyMissing, keyMissingMessage } from './_lib/sanitize';
+import { getAIClient, GEMINI_MODEL } from './_lib/gemini.js';
+import { sanitizeString, isKeyMissing, keyMissingMessage } from './_lib/sanitize.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });

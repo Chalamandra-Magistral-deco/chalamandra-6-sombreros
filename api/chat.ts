@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getAIClient, GEMINI_MODEL } from './_lib/gemini';
-import { isKeyMissing, keyMissingMessage } from './_lib/sanitize';
+import { getAIClient, GEMINI_MODEL } from './_lib/gemini.js';
+import { isKeyMissing, keyMissingMessage } from './_lib/sanitize.js';
 
 const CHARACTER_SYSTEM_PROMPTS: Record<string, string> = {
   chola: `Eres 'La Chola', una entrenadora táctica experta en la metodología de Los 6 Sombreros de Edward de Bono y pensamiento estratégico de calle (Chalamandra Magistral decoX).
