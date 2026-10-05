@@ -32,6 +32,26 @@ async function startServer() {
 
   app.use(express.json({ limit: '100kb' }));
 
+  // Graceful handling of malformed JSON payloads
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (err instanceof SyntaxError && 'status' in err && (err as any).status === 400) {
+      return res.status(400).json({ error: 'Payload JSON malformado.' });
+    }
+    next(err);
+  });
+
+  // Request logger for API calls
+  app.use((req, res, next) => {
+    if (!req.path.startsWith('/api')) return next();
+    const start = Date.now();
+    res.on('finish', () => {
+      const duration = Date.now() - start;
+      const timeStr = new Date().toISOString().substring(11, 19);
+      console.log(`[${timeStr}] ${req.method} ${req.originalUrl} ${res.statusCode} (${duration}ms)`);
+    });
+    next();
+  });
+
   // In-memory rate limiter to protect Gemini API quota
   const requestCounts = new Map<string, { count: number; resetTime: number }>();
   const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
@@ -68,6 +88,17 @@ async function startServer() {
     userRate.count += 1;
     next();
   };
+
+  // Health check and diagnostic endpoints
+  app.get(["/api/health", "/api/test"], (req, res) => {
+    res.json({ 
+      ok: true, 
+      status: "healthy",
+      timestamp: new Date().toISOString(),
+      uptime: Math.round(process.uptime()),
+      geminiConfigured: !!process.env.GEMINI_API_KEY
+    });
+  });
 
   // API route for Gemini suggestions with input validation & prompt injection defense
   app.post("/api/suggest", rateLimitMiddleware, async (req, res) => {
@@ -266,6 +297,12 @@ Objetivo: Forzar al usuario a salir de la inercia mental mediante el Sombrero Ve
           : "No se pudo conectar con el mentor de IA en este momento."
       });
     }
+  });
+
+  // Global error handler for API routes
+  app.use('/api', (err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error('Unhandled API Error:', err);
+    res.status(500).json({ error: 'Error interno del servidor en la API.' });
   });
 
   // Vite middleware for development

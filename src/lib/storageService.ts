@@ -101,7 +101,12 @@ export async function saveHatsRitual(
 
   const existing = getSavedHatsRituals();
   const updated = [newRitual, ...existing];
-  localStorage.setItem(HATS_STORAGE_KEY, JSON.stringify(updated));
+  try {
+    localStorage.setItem(HATS_STORAGE_KEY, JSON.stringify(updated));
+  } catch (err) {
+    console.error('Error writing hats ritual to localStorage:', err);
+    throw new Error('Almacenamiento local no disponible o lleno.');
+  }
   notifyHatsSubscribers();
 
   return newRitual.id;
@@ -134,7 +139,11 @@ export async function deleteHatsRitual(param1: string, param2?: string): Promise
   const ritualId = param2 ? param2 : param1;
   const existing = getSavedHatsRituals();
   const updated = existing.filter((item) => item.id !== ritualId);
-  localStorage.setItem(HATS_STORAGE_KEY, JSON.stringify(updated));
+  try {
+    localStorage.setItem(HATS_STORAGE_KEY, JSON.stringify(updated));
+  } catch (err) {
+    console.error('Error deleting hats ritual from localStorage:', err);
+  }
   notifyHatsSubscribers();
 }
 
@@ -165,7 +174,12 @@ export async function saveLadderRitual(
 
   const existing = getSavedLadderRituals();
   const updated = [newRitual, ...existing];
-  localStorage.setItem(LADDER_STORAGE_KEY, JSON.stringify(updated));
+  try {
+    localStorage.setItem(LADDER_STORAGE_KEY, JSON.stringify(updated));
+  } catch (err) {
+    console.error('Error writing ladder ritual to localStorage:', err);
+    throw new Error('Almacenamiento local no disponible o lleno.');
+  }
   notifyLadderSubscribers();
 
   return newRitual.id;
@@ -197,6 +211,10 @@ export async function deleteLadderRitual(param1: string, param2?: string): Promi
   const ritualId = param2 ? param2 : param1;
   const existing = getSavedLadderRituals();
   const updated = existing.filter((item) => item.id !== ritualId);
-  localStorage.setItem(LADDER_STORAGE_KEY, JSON.stringify(updated));
+  try {
+    localStorage.setItem(LADDER_STORAGE_KEY, JSON.stringify(updated));
+  } catch (err) {
+    console.error('Error deleting ladder ritual from localStorage:', err);
+  }
   notifyLadderSubscribers();
 }

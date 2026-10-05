@@ -9,7 +9,7 @@
     "start": "node dist/server.cjs",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
-    "test": "node --check dist/server.cjs 2>/dev/null || true"
+    "test": "tsx --test tests/*.test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

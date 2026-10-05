@@ -23,7 +23,7 @@ export function evaluateResponse(
   timeTaken: number, 
   hat: HatKey, 
   character: CharacterKey, 
-  mode: string
+  _mode?: string
 ): { score: number; stars: number; feedback: string; dominantInsight: string } {
   const clean = text.trim().toLowerCase();
   const charCount = clean.length;
@@ -311,8 +311,6 @@ export function generateMirror(profile: PlayerCognitiveProfile): {
     verde: profile.verde,
     azul: profile.azul
   };
-
-  const totalPoints = Object.values(scores).reduce((a, b) => a + b, 0) || 1;
 
   const sortedHats = [...hatsList].sort((a, b) => scores[b] - scores[a]);
   const dominantHat = sortedHats[0];
