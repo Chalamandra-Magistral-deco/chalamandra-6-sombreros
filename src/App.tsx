@@ -69,7 +69,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from './context/AuthContext';
 import { sound } from './lib/audio';
-import { FLAVOR_THEMES, HATS_STEPS, LADDER_STEPS, ACADEMY_HATS } from './data/constants';
+import { FLAVOR_THEMES } from './data/constants';
 import { 
   saveHatsRitual, 
   subscribeHatsRituals, 
