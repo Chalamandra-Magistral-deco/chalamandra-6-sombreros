@@ -1,6 +1,0 @@
-{
-  "name": "Los 6 Sombreros – Chalamandra Magistral decoX",
-  "description": "Ritual de toma de decisiones de Los 6 Sombreros de Edward de Bono y Escalera Estratégica por Chalamandra Magistral decoX (chalamandramagistral.com).",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

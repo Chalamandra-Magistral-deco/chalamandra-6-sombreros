@@ -13,3 +13,4 @@ firebase-applet-config.json
 # Lockfiles alternos (el proyecto usa bun.lock)
 package-lock.json
 yarn.lock
+bun.lock
