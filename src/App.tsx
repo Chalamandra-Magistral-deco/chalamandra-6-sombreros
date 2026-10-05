@@ -213,9 +213,15 @@ export default function App() {
         const data = await response.json();
         if (data.suggestion) {
             setHatsData(prev => ({ ...prev, [field]: data.suggestion }));
+            sound.playPreset();
+        } else if (data.error) {
+            setValidationError(data.error);
+            sound.playClick();
         }
-    } catch (err) {
+    } catch (err: any) {
         console.error("Error al obtener sugerencia:", err);
+        setValidationError(err.message || "Error al conectar con el servicio de IA.");
+        sound.playClick();
     } finally {
         setIsGeneratingSuggestion(null);
     }
